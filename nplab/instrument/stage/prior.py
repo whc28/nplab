@@ -46,9 +46,7 @@ class ProScan(serial.SerialInstrument, stage.Stage):
         self.query("BLSH 0") #turn off backlash control
         
         self.use_si_units = use_si_units
-    def move_rel(self, dx, block=True):
-        """Make a relative move by dx microns/metres (see move)"""
-        return self.move(dx, relative=True, block=block)
+        
     def move(self, x, relative=False, block=True):
         """
         Move to coordinate x (a np.array of coordinates) in microns, or metres if use_si_units is true
@@ -60,13 +58,15 @@ class ProScan(serial.SerialInstrument, stage.Stage):
         querystring = "GR" if relative else "G" #allow for absolute or relative moves
         if self.use_si_units: x = np.array(x) * 1e6
         for i in range(len(x)): querystring += " %d" % int(x[i]/self.resolution)
-        self.query(querystring)
+        self.query(querystring) #tell the stage to move
+        
+        # now wait for the stage to stop moving, stopping if interrupted
         try:
             if(block):
                 while(self.is_moving()):
                     time.sleep(0.02)
         except KeyboardInterrupt:
-            self.emergency_stop()
+            self.emergency_stop() #stop the stage on Ctrl+C
     def get_position(self, axis=None):
         """return the current position in microns"""
         if axis is not None:

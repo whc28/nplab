@@ -18,18 +18,22 @@ import nplab
 import nplab.instrument
 import time
 import threading
+import math
 
 class Stage(nplab.instrument.Instrument):
     axis_names = ('x', 'y', 'z')
-    def move(self, pos, relative=False):
+    def move(self, pos, axis=None, relative=False):
+        """Move the stage to a given position in one axis or all axes."""
         raise NotImplementedError("You must override move() in a Stage subclass")
-    def move_rel(self, position):
+        
+    def move_rel(self, position, *args, **kwargs):
         """Make a relative move, see move() with relative=True."""
-        self.move(position, relative=True)
+        self.move(position, relative=True, *args, **kwargs)
+        
     def move_axis(self, pos, axis=None, relative=False):
         """Move along one axis."""
-        if axis not in self.axis_names: raise ValueError("{0} is not a valid axis, must be one of {1}".format(axis, self.axis_names))
-        
+        self.validate_axis(axis)
+        self.move(self, pos, axis=axis, relative=relative)        
         full_position = np.zeros((len(self.axis_names))) if relative else self.position
         full_position[self.axis_names.index(axis)] = pos
         self.move(full_position, relative=relative)
@@ -39,11 +43,59 @@ class Stage(nplab.instrument.Instrument):
         raise NotImplementedError("You must override get_position in a Stage subclass.")
     def select_axis(self, iterable, axis=None):
         """Pick an element from a tuple, indexed by axis name."""
-        assert axis in self.axis_names, ValueError("{0} is not a valid axis name.".format(axis))
+        self.validate_axis(axis)
         return iterable[self.axis_names.index(axis)]
+    def validate_axis(self, axis):
+        """Assert that an axis name is valid, raising an exception if not."""
+        assert axis in self.axis_names, ValueError("{0} is not a valid axis name, it must be one of {1}.".format(axis, self.axis_names))
         
     position = property(fget=_get_position, doc="Current position of the stage")
 
+def StageImplementation(emulate_multi_axis_moves=False, emulate_single_axis_moves=False):
+    class klass(Stage):
+        pass
+    
+    if emulate_multi_axis_moves:
+        def move(self, pos, axis=None, relative=False, *args, **kwargs):
+            """Move the stage to a given position.
+            
+            Pos should either be an iterable (usually ndarray) specifying the
+            position to move to.
+            If axis is given, pos should be a number, and a single-axis move
+            is made.
+            relative=True makes a relative move, other arguments are specific
+            to implementations of this class for individual stages.
+            """
+            if axis is not None: #if we were asked for a single-axis move, great
+                self.move_axis(self, pos, axis=axis, relative=relative, *args, **kwargs)
+            for ax, p in zip(self.axis_names, pos): #if not, make a single-axis move for each axis
+                self.move_axis(self, p, axis=ax, relative=relative, *args, **kwargs)
+        klass.move = move
+                
+    if emulate_single_axis_moves:
+        def move(self, pos, axis=None, relative=False, *args, **kwargs):
+            """Move the stage to a given position.
+            
+            Pos should either be an iterable (usually ndarray) specifying the
+            position to move to.
+            If axis is given, pos should be a number, and a single-axis move
+            is made.
+            relative=True makes a relative move, other arguments are specific
+            to implementations of this class for individual stages.
+            """
+            if axis is not None: #if we were asked for a single-axis move, see below
+                self.move_axis(self, pos, axis=axis, relative=relative, *args, **kwargs)
+            else:
+                self.move_all_axes(self, pos, relative=relative, *args, **kwargs)
+        def move_axis(self, pos, axis=None, relative=False):
+            """Move along one axis."""
+            self.validate_axis(axis)      
+            full_position = np.zeros((len(self.axis_names))) if relative else self.position
+            full_position[self.axis_names.index(axis)] = pos #replace the relevant axis position
+            self.move_all_axes(full_position, relative=relative) #and move all axes (only one should move)
+        def move_all_axes(self, pos, relative=False):
+            """Move all axes to a new position"""
+            
 
 #def step_size_dict(smallest, largest, mantissas=[1,2,5]):
 #    """Return a dictionary with nicely-formatted distances as keys and metres as values."""
