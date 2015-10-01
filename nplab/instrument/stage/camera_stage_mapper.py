@@ -263,6 +263,8 @@ class CameraStageMapper(Instrument, HasTraits):
                         plt.pcolormesh(position_grid[:,:,0],position_grid[:,:,1],downsampled_image)
                 x_positions.reverse() #reverse the X positions, so we do a snake-scan
             self.move_to_sample_position(centre_position) #go back to the start point
+        if reset_interactive_mode:
+            plt.ioff()
         return dest
         
             
