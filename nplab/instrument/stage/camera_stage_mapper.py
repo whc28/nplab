@@ -5,6 +5,7 @@ Created on Wed Jun 11 17:20:36 2014
 @author: Hera
 """
 import nplab.instrument.camera
+from nplab.instrument import Instrument
 import nplab.instrument.stage
 import cv2
 import cv2.cv
@@ -95,7 +96,7 @@ class CameraStageMapper(Instrument, HasTraits):
         
     def move_to_sample_position(self, p):
         """Move the stage to centre sample position p on the camera"""
-        self.stage.move(-p)
+        self.stage.move(-np.array(p))
         
     def camera_centre_position(self):
         """return the position of the centre of the camera view, on the sample"""
@@ -235,19 +236,22 @@ class CameraStageMapper(Instrument, HasTraits):
         reset_interactive_mode = live_plot and not matplotlib.is_interactive()
         if live_plot:
             plt.ion()
-            plt.figure(aspect=1)
+            fig = plt.figure()
+            axes = fig.add_subplot(111)
+            axes.set_aspect(1)
+            
         with self._action_lock:
             if dest is None:
                 dest = self.create_data_group("tiled_image_%d") #or should this be in RAM??
-            image_spacing = self.camera_point_displacement_to_sample((1,1)) * (1 - overlap)
-            centre_position = self.camera_centre_position()
-            x_positions = [centre_position + image_spacing * nx 
-                            for nx in np.arange(n_images[0]) - (n_images[0] - 1)/2]
-            y_positions = [centre_position + image_spacing * ny 
-                            for ny in np.arange(n_images[1]) - (n_images[1] - 1)/2]:
-            for y_pos in y_positions:
-                for x_pos in x_positions:
-                    self.move_to_sample_position((x_pos, y_pos)) #go to the raster point
+            centre_position = self.camera_centre_position()[0:2] #only 2D
+            x_indices = np.arange(n_images[0]) - (n_images[0] - 1)/2.0
+            y_indices = np.arange(n_images[1]) - (n_images[1] - 1)/2.0
+            for y_index in y_indices:
+                for x_index in x_indices:
+                    position = centre_position + self.camera_point_displacement_to_sample(np.array([x_index, y_index]) * (1-overlap))
+                    self.move_to_sample_position(position) #go to the raster point
+                    if autofocus_args is not None:
+                        self.autofocus(**autofocus_args)
                     self.flush_camera_and_wait() #wait for the camera to be ready/stage to settle
                     tile = dest.create_dataset("tile_%d", 
                                                data=self.camera.color_image(),
@@ -256,12 +260,20 @@ class CameraStageMapper(Instrument, HasTraits):
                     tile.attrs.create("camera_centre_position",self.camera_centre_position())
                     if live_plot:
                         downsampled_image = tile[::downsample, ::downsample, :] #downsample image quickly
+                        s = downsampled_image.shape
                         corner_points = np.array([[self.camera_point_to_sample((xcorner,ycorner)) 
                                                 for ycorner in [0,1]] 
                                                 for xcorner in [0,1]]) #positions of corners
-                        position_grid = ndimage.zoom(corner_points, (downsampled_image.shape[0],downsampled_image.shape[1],2),order=1)
-                        plt.pcolormesh(position_grid[:,:,0],position_grid[:,:,1],downsampled_image)
-                x_positions.reverse() #reverse the X positions, so we do a snake-scan
+                        position_grid = ndimage.zoom(corner_points, ((s[0]+1)/2.0,(s[1]+1)/2.0,1),order=1)
+                        mesh = axes.pcolormesh(position_grid[:,:,0],
+                                              position_grid[:,:,1],
+                                              downsampled_image[:,:,0])
+                        mesh.set_array(None)
+                        mesh.set_color(downsampled_image.reshape((s[0]*s[1],s[2]))/256.0) #TODO: work for non-u8 images...
+                        fig.canvas.draw()
+                x_indices = x_indices[::-1] #reverse the X positions, so we do a snake-scan
+            dest.attrs.set("camera_to_sample",self.camera_to_sample)
+            dest.attrs.set("camera_centre",self.camera_centre)
             self.move_to_sample_position(centre_position) #go back to the start point
         if reset_interactive_mode:
             plt.ioff()
