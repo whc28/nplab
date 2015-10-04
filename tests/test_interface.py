@@ -17,6 +17,8 @@ class InstrumentA(Instrument):
         l = qtgui.QLabel()
         l.setText("InstrumentA Interface")
         return l
+    def __del__(self):
+        print "deleted"
         
 class InstrumentB(Instrument, HasTraits):
     description = String("Description...")
