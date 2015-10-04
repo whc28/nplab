@@ -218,7 +218,7 @@ class CameraStageMapper(Instrument, HasTraits):
             
     ######## Image Tiling ############
     def acquire_tiled_image(self, n_images=(3,3), dest=None, overlap=0.33,
-                            autofocus_args={},live_plot=False, downsample=3):
+                            autofocus_args={},live_plot=False, downsample=8):
         """Raster-scan the stage and take images, which we can later tile.
 
         Arguments:
@@ -259,17 +259,11 @@ class CameraStageMapper(Instrument, HasTraits):
                     tile.attrs.create("stage_position",self.stage.position)
                     tile.attrs.create("camera_centre_position",self.camera_centre_position())
                     if live_plot:
-                        downsampled_image = tile[::downsample, ::downsample, :] #downsample image quickly
-                        s = downsampled_image.shape
-                        corner_points = np.array([[self.camera_point_to_sample((xcorner,ycorner)) 
-                                                for ycorner in [0,1]] 
-                                                for xcorner in [0,1]]) #positions of corners
-                        position_grid = ndimage.zoom(corner_points, ((s[0]+1)/2.0,(s[1]+1)/2.0,1),order=1)
-                        mesh = axes.pcolormesh(position_grid[:,:,0],
-                                              position_grid[:,:,1],
-                                              downsampled_image[:,:,0])
-                        mesh.set_array(None)
-                        mesh.set_color(downsampled_image.reshape((s[0]*s[1],s[2]))/256.0) #TODO: work for non-u8 images...
+                        #Plot the image, in sample coordinates
+                        corner_points = np.array([self.camera_point_to_sample((xcorner,ycorner)) 
+                                                for ycorner in [0,1] for xcorner in [0,1]]) #positions of corners
+                        plot_skewed_image(tile[::downsample, ::downsample, :],
+                                          corner_points, axes=axes)
                         fig.canvas.draw()
                 x_indices = x_indices[::-1] #reverse the X positions, so we do a snake-scan
             dest.attrs.set("camera_to_sample",self.camera_to_sample)
