@@ -21,6 +21,7 @@ class Instrument(object):
     __instances = None
 #    description = String
     metadata_property_names = () #"Tuple of names of properties that should be automatically saved as HDF5 metadata
+    __gui_instance = None
 
     def __init__(self):
         """Create an instrument object."""
@@ -110,25 +111,29 @@ class Instrument(object):
     metadata = property(get_metadata)
 
 
-    def show_gui(self, blocking=True):
+    def show_gui(self, block=True):
         """Display a GUI window for the item of equipment.
-
-        You should override this method to display a window to control the
-        instrument.  If edit_traits/configure_traits methods exist, we'll fall
-        back to those as a default.
+        You should probably not override this method to display a window to 
+        control the instrument.  If edit_traits/configure_traits methods exist,
+        we'll use those as a default.  If you define get_qt_ui() then the
+        Widget that returns will be shown.  By default we try to make it a
+        singleton: if a GUI already exists, we'll just show it again.  Override
+        if you want to change that!
 
         If you use blocking=False, it will return immediately - this may cause
         issues with the Qt/Traits event loop.
         """
         try:
             if hasattr(self,'get_qt_ui'):
-                from nplab.utils.gui import get_qt_app, qt
+                from nplab.utils.gui import get_qt_app, qt, qtgui
                 app = get_qt_app()
-                ui = self.get_qt_ui()
+                if not isinstance(self.__gui_instance, qtgui.QWidget): #create the widget if it doesn't exist already
+                    self.__gui_instance = self.get_qt_ui()
+                ui = self.__gui_instance
                 ui.show()
-                if blocking:
+                if block:
                     print "Running GUI, this will block the command line until the window is closed."
-                    ui.windowModality = qt.Qt.ApplicationModal
+                    ui.windowModality = qt.Qt.ApplicationModal #is this necessary? Pointless?
                     try:
                         return app.exec_()
                     except:
@@ -136,7 +141,7 @@ class Instrument(object):
                         return
                 else:
                     return ui
-            elif blocking:
+            elif block:
                 self.configure_traits()
             else:
                 self.edit_traits()
