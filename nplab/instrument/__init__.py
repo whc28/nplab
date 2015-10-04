@@ -122,6 +122,7 @@ class Instrument(object):
                     self.__gui_instance = self.get_qt_ui()
                 ui = self.__gui_instance
                 ui.show()
+                ui.activateWindow() #flash the taskbar entry to make it obvious
                 if block:
                     print "Running GUI, this will block the command line until the window is closed."
                     ui.windowModality = qt.Qt.ApplicationModal #is this necessary? Pointless?

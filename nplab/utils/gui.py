@@ -91,16 +91,20 @@ def show_widget(Widget, *args, **kwargs):
     sys.exit(app.exec_())
 
 def show_guis(instruments, block=True):
-    """Display the Qt user interfaces of a list of instruments."""
+    """Display the Qt user interfaces of a list of instruments.
+    
+    NB it used to be the case that you needed to hold onto references to the
+    Qt UIs or they'd disappear - this is now handled by the objects."""
     app = get_qt_app()
-    uis = [i.get_qt_ui() for i in instruments if hasattr(i, "get_qt_ui")]
+    uis = [i.show_gui(block=False) for i in instruments if hasattr(i, "get_qt_ui")]
     traits = [i.edit_traits() for i in instruments if hasattr(i, "edit_traits")]
     for ui in uis:
         ui.show()
     if block:
         return app.exec_()
     else:
-        return uis, traits
+        return uis, traits 
+        
 
 if __name__ == '__main__':
     import matplotlib
