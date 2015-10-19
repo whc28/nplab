@@ -2,15 +2,16 @@
 Instrument Class
 ================
 
-This base class defines the standard behaviour for NPLab's instrument 
-classes.  
+This base class defines the standard behaviour for NPLab's instrument
+classes.
 """
 
 from nplab.utils.thread_utils import locked_action_decorator, background_action_decorator
 import nplab
-from traits.api import HasTraits, String
+#from traits.api import HasTraits, String
 
 from weakref import WeakSet
+import nplab.utils.log
 
 class Instrument(object):
     """Base class for all instrument-control classes.
@@ -18,7 +19,7 @@ class Instrument(object):
     This class takes care of management of instruments, saving data, etc.
     """
     __instances = None
-    description = String
+#    description = String
     metadata_property_names = () #"Tuple of names of properties that should be automatically saved as HDF5 metadata
     __gui_instance = None
 
@@ -40,8 +41,8 @@ class Instrument(object):
 
     @classmethod
     def get_instance(cls, create=True, exceptions=True, *args, **kwargs):
-        """Return an instance of this class, if one exists.  
-        
+        """Return an instance of this class, if one exists.
+
         Usually returns the first available instance.
         """
         instances = cls.get_instances()
@@ -92,9 +93,18 @@ class Instrument(object):
             dset.file.flush() #make sure it's in the file if we wrote data
         return dset
 
+    def log(self, message):
+        """Save a log message to the current datafile.
+
+        This is the preferred way to output debug/informational messages.  They
+        will be saved in the current HDF5 file and optionally shown in the
+        nplab console.
+        """
+        nplab.utils.log.log(message, from_object=self)
+
     def get_metadata(self):
         """A dictionary of settings, properties, etc. to save along with data.
-        
+
         This returns the value of each property in self.metadata_property_names."""
         return {name: getattr(self,name) for name in self.metadata_property_names}
 
@@ -103,7 +113,7 @@ class Instrument(object):
 
     def show_gui(self, block=True):
         """Display a GUI window for the item of equipment.
-        
+
         You should probably not override this method to display a window to 
         control the instrument.  If edit_traits/configure_traits methods exist,
         we'll use those as a default.  If you define get_qt_ui() then the
