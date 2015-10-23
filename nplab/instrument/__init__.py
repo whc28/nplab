@@ -113,6 +113,7 @@ class Instrument(object):
 
     def show_gui(self, block=True):
         """Display a GUI window for the item of equipment.
+
         You should probably not override this method to display a window to 
         control the instrument.  If edit_traits/configure_traits methods exist,
         we'll use those as a default.  If you define get_qt_ui() then the
