@@ -132,6 +132,17 @@ class Group(h5py.Group):
                  if k.startswith(name)  # only items that start with `name`
                  and re.match(r"_*(\d+)$", k[len(name):])]  # and end with numbers
         return sorted(items, key=h5_item_number)
+    def count_numbered_items(self, name):
+        """Count the number of items that would be returned by numbered_items
+        
+        If all you need to do is count how many items match a name, this is
+        a faster way to do it than len(group.numbered_items("name")).
+        """
+        n = 0
+        for k in self.keys():
+            if k.startswith(name) and re.match(r"_*(\d+)$", k[len(name):]):
+                n += 1
+        return n
 
     def create_group(self, name, attrs=None, auto_increment=True, timestamp=True):
         """Create a new group, ensuring we don't overwrite old ones.
@@ -179,6 +190,8 @@ class Group(h5py.Group):
         dset = super(Group, self).create_dataset(name, shape, dtype, data, *args, **kwargs)
         if timestamp:
             dset.attrs.create('creation_timestamp', datetime.datetime.now().isoformat())
+        if hasattr(data, "attrs"):
+            attributes_from_dict(dset, data.attrs) #if the data has embedded attributes, save them.
         if attrs is not None:
             attributes_from_dict(dset, attrs)  # quickly set the attributes
         return dset
