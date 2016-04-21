@@ -60,7 +60,7 @@ class Keithley2635A(VisaInstrument):
     src_voltage_autorange = queried_property('print(smua.source.autorangev)', 'smua.source.autorangev=%s',
                                              validate=[0, 1, False, True], dtype='int',
                                              doc='Source voltage autorange')
-    src_current_autorange = queried_property('print(smua.source.autorangei)', 'smua.source.autorangei=%s',
+    src_current_autorange = queried_property('print(smua.source.autorangei)', 'smua.source.autorangei=smua.autorange_off',
                                              validate=[0, 1, False, True], dtype='int',
                                              doc='Source current autorange')
 
@@ -72,7 +72,7 @@ class Keithley2635A(VisaInstrument):
     meas_voltage_autorange = queried_property('print(smua.measure.autorangev)', 'smua.measure.autorangev=%s',
                                               validate=[0, 1, False, True], dtype='int',
                                               doc='Measurement voltage autorange')
-    meas_current_autorange = queried_property('print(smua.measure.autorangei)', 'smua.measure.autorangei=%s',
+    meas_current_autorange = queried_property('print(smua.measure.autorangei)', 'smua.measure.autorangei= smua.autorange_off',
                                               validate=[0, 1, False, True], dtype='int',
                                               doc='Measurement current autorange')
 
@@ -80,35 +80,58 @@ class Keithley2635A(VisaInstrument):
                                              doc='Minimum range the measurement voltage autorange will set')
     meas_current_lowrange = queried_property('print(smua.measure.lowrangei)', 'smua.measure.lowrangei=%s',
                                              doc='Minimum range the measurement current autorange will set')
+    
+    st_nplc = queried_property('print(smua.measure.npl)', 'smua.measure.nplc=0.1',
+                                             doc='nplc')
+                                             
+    st_func = queried_property('print(smua.source.func = smua.output_dc_volts)', 'smua.source.func = smua.output_dc_volts',
+                                             doc='func') 
+    
+    st_autorangeioff = queried_property('print(smua.measure.autorangei = smua.autorange_off)', 'smua.measure.autorangei = smua.autorange_off',
+                                             doc='autorange')
+    
+    st_delay = queried_property('print(smua.measure.delay = 0.0)', 'smua.measure.delay = 0.01',
+                                             doc='delay') 
+                                             
+    st_rangei = queried_property('print(smua.measure.rangei = 1e-5)', 'smua.measure.rangei = 1e-5',
+                                             doc='rangei') 
+                                             
+    st_cc = queried_property('print(smua.measure.limiti = 5e-7)', 'smua.measure.limiti = 5e-7',
+                                             doc='limiti') 
 
     def read_voltage(self):
         """Measure the voltage."""
-        return float(self.instr.query('print(smua.measure.v())'))
+        return float(self.query('print(smua.measure.v())'))
 
     def read_current(self):
         """Measure the current."""
-        return float(self.instr.query('print(smua.measure.i())'))
+        return float(self.query('print(smua.measure.i())'))
 
     def read_resistance(self):
         """Measure the resistance."""
-        return float(self.instr.query('print(smua.measure.r())'))
+        return float(self.query('print(smua.measure.r())'))
 
     def read_power(self):
         """Measure the power."""
-        return float(self.instr.query('print(smua.measure.p())'))
+        return float(self.query('print(smua.measure.p())'))
 
     def read_iv(self):
         """Measure the voltage and the current."""
         self.instr.write('i,v = smua.measure.iv()')
-        return float(self.instr.query('print(i)')), \
-               float(self.instr.query('print(v)'))
+        return float(self.query('print(i)')), \
+               float(self.query('print(v)'))
+    
+    def clear_buffers(self):
+        """Clear buffers"""
+        self.write('smua.nvbuffer1.clear()')
+        self.write('smua.nvbuffer2.clear()')
 
     @property
     def error(self):
         """Get the next error code from the SMU."""
         self.instr.write('errorCode, message = errorqueue.next()')
-        code = self.instr.query('print(errorCode)')
-        msg = self.instr.query('print(message)')
+        code = self.query('print(errorCode)')
+        msg = self.query('print(message)')
         return '{0:s}: {1:s}'.format(code, msg)
 
     def check_current_range(self, i):

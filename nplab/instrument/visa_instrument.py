@@ -3,6 +3,7 @@ __author__ = 'alansanders'
 from nplab.instrument.message_bus_instrument import MessageBusInstrument, queried_property, queried_channel_property
 import visa
 from functools import partial
+import time
 
 
 class VisaInstrument(MessageBusInstrument):
@@ -42,8 +43,15 @@ class VisaInstrument(MessageBusInstrument):
         return self.instr.read(*args, **kwargs)
 
     def query(self, *args, **kwargs):
-        return self.instr.query(*args, **kwargs)
-
+        fail = True
+        while fail == True:
+            try:
+                self.instr.query(*args, **kwargs)
+                time.sleep(.1)
+                return self.instr.query(*args, **kwargs)
+            except:
+                print "fail"
+        
     #idn = property(fget=partial(query, message='*idn?'))
     idn = queried_property('*idn?', dtype='str')
 
