@@ -35,7 +35,7 @@ from ctypes import byref, c_int, c_ulong, c_double
 import numpy as np
 import threading
 from nplab.instrument import Instrument
-from nplab.utils.gui import QtCore, QtGui, QtWidgets, uic
+from nplab.utils.gui import QtCore, QtGui, QtWidgets, uic, show_guis
 from nplab.instrument.spectrometer import Spectrometer, Spectrometers, SpectrometerControlUI, SpectrometerDisplayUI, SpectrometerUI
 import traitsui
 import os
@@ -418,12 +418,13 @@ class OceanOpticsControlUI(SpectrometerControlUI):
     def update_tec(self):
         self.tec_temperature.setText(str(self.spectrometer.tec_temperature))
 
-
+      
 # example code:
 if __name__ == "__main__":
     from nplab.instrument.spectrometer import Spectrometers
     import sys
     from nplab.utils.gui import get_qt_app
+    import nplab
 
     try:
         N = len(list_spectrometers())
@@ -441,7 +442,10 @@ if __name__ == "__main__":
  #       ui = spectrometers.get_qt_ui()
  #       ui.show()
  #       sys.exit(app.exec_()) #this is the "long way" of running a GUI
-        spectrometers.show_gui()  # the "short way" of running a GUI
+#        spectrometers.show_gui()  # the "short way" of running a GUI
+        show_guis([spectrometers,
+                   nplab.current_datafile(),
+                   ])
     except OceanOpticsError as error:
         print "An error occurred with the spectrometer: %s" % error
     finally:
