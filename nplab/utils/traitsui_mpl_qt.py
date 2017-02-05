@@ -11,8 +11,8 @@ http://markmail.org/message/z3hnoqruk56g2bje
 adapted and tested to work with PySide from Anaconda in March 2014
 """
 
-from nplab.utils.gui import *
-
+#from nplab.utils.gui import *
+from nplab.utils.gui import QtCore,QtGui
 import matplotlib
 # We want matplotlib to use a QT backend
 matplotlib.use('Qt4Agg')
